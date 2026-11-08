@@ -1,0 +1,49 @@
+{
+  "properties": {
+    "backend": {
+      "type": "string",
+      "title": "Backend",
+      "description": "Who writes the message. Claude Code and Codex use the CLI you are signed in to (the same one the IDE's agents use) and need its process permission; the APIs need a key under Settings › Plugins.",
+      "enum": ["claude", "codex", "anthropic", "openai", "local"],
+      "default": "claude"
+    },
+    "style": {
+      "type": "string",
+      "title": "Style",
+      "description": "conventional: type(scope): subject. plain: an imperative subject. gitmoji: a gitmoji, then the subject.",
+      "enum": ["conventional", "plain", "gitmoji"],
+      "default": "conventional"
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "The language of the message, for example English or German.",
+      "default": "English"
+    },
+    "body": {
+      "type": "string",
+      "title": "Body",
+      "description": "auto: a short body only when the change needs explaining. always: subject and body. never: the subject line only.",
+      "enum": ["auto", "always", "never"],
+      "default": "auto"
+    },
+    "useDraft": {
+      "type": "boolean",
+      "title": "Use the text already in the message box as a hint",
+      "default": true
+    },
+    "instructions": {
+      "type": "string",
+      "title": "Extra instructions",
+      "description": "Added to the prompt, for example: mention the ticket from the branch name; use the scopes api, ui, db.",
+      "multiline": true,
+      "default": ""
+    },
+    "maxDiffKb": {
+      "type": "integer",
+      "title": "Diff sent to the model (KiB)",
+      "description": "Larger diffs are cut; the file list is always sent whole.",
+      "default": 64
+    }
+  }
+}

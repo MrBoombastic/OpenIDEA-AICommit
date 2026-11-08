@@ -1,0 +1,72 @@
+{
+  "properties": {
+    "claudeModel": {
+      "type": "string",
+      "title": "Model",
+      "description": "Passed as --model (haiku, sonnet, opus or a full model id). Empty: the CLI's default.",
+      "group": "Claude Code",
+      "default": "haiku"
+    },
+    "claudeNoTools": {
+      "type": "boolean",
+      "title": "Turn off Claude Code's tools (--tools \"\")",
+      "description": "Faster, and the model sees only the diff. Turn off for Claude Code versions without --tools.",
+      "group": "Claude Code",
+      "default": true
+    },
+    "claudeExtraArgs": {
+      "type": "string",
+      "title": "Extra arguments",
+      "description": "Separated by spaces, added after the plugin's own.",
+      "group": "Claude Code",
+      "default": ""
+    },
+    "codexModel": {
+      "type": "string",
+      "title": "Model",
+      "description": "Passed as -m. Empty: the CLI's default.",
+      "group": "Codex",
+      "default": ""
+    },
+    "codexExtraArgs": {
+      "type": "string",
+      "title": "Extra arguments",
+      "description": "Separated by spaces, added after the plugin's own.",
+      "group": "Codex",
+      "default": ""
+    },
+    "anthropicModel": {
+      "type": "string",
+      "title": "Model",
+      "group": "Anthropic API",
+      "default": "claude-opus-5-5"
+    },
+    "anthropicEffort": {
+      "type": "string",
+      "title": "Effort",
+      "description": "default: leave it to the model (use it for models without effort, such as Haiku 4.5).",
+      "group": "Anthropic API",
+      "enum": ["low", "medium", "high", "default"],
+      "default": "low"
+    },
+    "openaiModel": {
+      "type": "string",
+      "title": "Model",
+      "group": "OpenAI API",
+      "default": "gpt-4.1-mini"
+    },
+    "localUrl": {
+      "type": "string",
+      "title": "Chat completions URL",
+      "description": "An OpenAI-compatible endpoint on localhost: Ollama, LM Studio, llama.cpp.",
+      "group": "Local model",
+      "default": "http://localhost:11434/v1/chat/completions"
+    },
+    "localModel": {
+      "type": "string",
+      "title": "Model",
+      "group": "Local model",
+      "default": "qwen2.5-coder:7b"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+# OpenIDEA Plugin: AI Commit Message
+id = "mrboombastic.ai-commit"
+name = "AI Commit Message"
+version = "1.0.0"
+description = "Writes the commit message from the changes you selected, with the Claude Code or Codex CLI you are already signed in to (no API key needed), or with the Anthropic, OpenAI or a local model API. Optional Conventional Commits check before commit."
+authors = ["MrBoombastic"]
+homepage = "https://github.com/MrBoombastic/OpenIDEA-AICommit"
+license = "MIT"
+change-notes = "1.0.0 — First release: a button above the commit message; Claude Code, Codex, Anthropic API, OpenAI API and local (Ollama, LM Studio) backends; Conventional Commits, plain and gitmoji styles; a Conventional Commits before-commit check."
+categories = ["vcs", "ai"]
+icon = "icons/icon.svg"
+icon-dark = "icons/icon_dark.svg"
+engines.openidea = "^1.3"
+wasm = "dist/plugin.wasm"
+
+[capabilities]
+required = ["vcs.read", "vcs.write", "storage"]
+optional = [
+    "process:claude",
+    "process:codex",
+    "net:api.anthropic.com",
+    "net:api.openai.com",
+    "net:localhost",
+    "secrets",
+    "clipboard",
+]
+
+[[contributes.commands]]
+id = "generate"
+title = "Generate Commit Message with AI"
+category = "AI Commit"
+
+[[contributes.commands]]
+id = "insert"
+title = "Insert Last AI Commit Message"
+category = "AI Commit"
+
+[[contributes.commands]]
+id = "copy"
+title = "Copy Last AI Commit Message"
+category = "AI Commit"
+
+[[contributes.commands]]
+id = "test-backend"
+title = "Test AI Commit Backend"
+category = "AI Commit"
+
+[[contributes.menus]]
+menu = "commit.message"
+command = "generate"
+
+[[contributes.commitChecks]]
+id = "conventional"
+title = "Conventional Commits message"
+
+[[contributes.secrets]]
+name = "anthropic-api-key"
+label = "Anthropic API key"
+description = "Only for the Anthropic API backend. Sent only to api.anthropic.com."
+
+[[contributes.secrets]]
+name = "openai-api-key"
+label = "OpenAI API key"
+description = "Only for the OpenAI API backend. Sent only to api.openai.com."
+
+[contributes.settings]
+title = "AI Commit Message"
+
+[[contributes.settings.pages]]
+id = "general"
+title = "Message"
+schema = "settings/general.json"
+
+[[contributes.settings.pages]]
+id = "backends"
+title = "Backends"
+schema = "settings/backends.json"
+
+[[contributes.settings.pages.actions]]
+title = "Test backend"
+command = "test-backend"
