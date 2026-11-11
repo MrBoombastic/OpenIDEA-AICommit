@@ -1,16 +1,16 @@
 # OpenIDEA Plugin: AI Commit Message
 id = "mrboombastic.ai-commit"
 name = "AI Commit Message"
-version = "1.0.0"
-description = "Writes the commit message from the changes you selected, with the Claude Code or Codex CLI you are already signed in to (no API key needed), or with the Anthropic, OpenAI or a local model API. Optional Conventional Commits check before commit."
+version = "1.1.0"
+description = "Writes the commit message from the changes you selected, with the Claude Code or Codex CLI you are already signed in to (no API key needed), or with the Anthropic API, the OpenAI API or any OpenAI-compatible server. Optional Conventional Commits check before commit."
 authors = ["MrBoombastic"]
 homepage = "https://github.com/MrBoombastic/OpenIDEA-AICommit"
 license = "MIT"
-change-notes = "1.0.0 — First release: a button above the commit message; Claude Code, Codex, Anthropic API, OpenAI API and local (Ollama, LM Studio) backends; Conventional Commits, plain and gitmoji styles; a Conventional Commits before-commit check."
+change-notes = "1.1.0 — Plugin API 1.5. Errors and results appear as notifications of the project, with Retry and Test backend. The local model may be any HTTPS server (allowed when the IDE asks, net:ask) or 127.0.0.1. The Claude Code and Codex extra-arguments and tools settings were removed: a project's settings can no longer change how the CLIs run. 1.0.0 — First release."
 categories = ["vcs", "ai"]
 icon = "icons/icon.svg"
 icon-dark = "icons/icon_dark.svg"
-engines.openidea = "^1.3"
+engines.openidea = "^1.5"
 wasm = "dist/plugin.wasm"
 
 [capabilities]
@@ -21,6 +21,8 @@ optional = [
     "net:api.anthropic.com",
     "net:api.openai.com",
     "net:localhost",
+    "net:127.0.0.1",
+    "net:ask",
     "secrets",
     "clipboard",
 ]

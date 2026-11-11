@@ -7,31 +7,10 @@
       "group": "Claude Code",
       "default": "haiku"
     },
-    "claudeNoTools": {
-      "type": "boolean",
-      "title": "Turn off Claude Code's tools (--tools \"\")",
-      "description": "Faster, and the model sees only the diff. Turn off for Claude Code versions without --tools.",
-      "group": "Claude Code",
-      "default": true
-    },
-    "claudeExtraArgs": {
-      "type": "string",
-      "title": "Extra arguments",
-      "description": "Separated by spaces, added after the plugin's own.",
-      "group": "Claude Code",
-      "default": ""
-    },
     "codexModel": {
       "type": "string",
       "title": "Model",
-      "description": "Passed as -m. Empty: the CLI's default.",
-      "group": "Codex",
-      "default": ""
-    },
-    "codexExtraArgs": {
-      "type": "string",
-      "title": "Extra arguments",
-      "description": "Separated by spaces, added after the plugin's own.",
+      "description": "Passed as --model. Empty: the CLI's default.",
       "group": "Codex",
       "default": ""
     },
@@ -46,7 +25,12 @@
       "title": "Effort",
       "description": "default: leave it to the model (use it for models without effort, such as Haiku 4.5).",
       "group": "Anthropic API",
-      "enum": ["low", "medium", "high", "default"],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "default"
+      ],
       "default": "low"
     },
     "openaiModel": {
@@ -58,14 +42,14 @@
     "localUrl": {
       "type": "string",
       "title": "Chat completions URL",
-      "description": "An OpenAI-compatible endpoint on localhost: Ollama, LM Studio, llama.cpp.",
-      "group": "Local model",
+      "description": "An OpenAI-compatible endpoint: Ollama, LM Studio, llama.cpp, vLLM. localhost and 127.0.0.1 need their permission (net:localhost, net:127.0.0.1); any other host must use https:// and is allowed once, when the IDE asks (net:ask).",
+      "group": "OpenAI-compatible server",
       "default": "http://localhost:11434/v1/chat/completions"
     },
     "localModel": {
       "type": "string",
       "title": "Model",
-      "group": "Local model",
+      "group": "OpenAI-compatible server",
       "default": "qwen2.5-coder:7b"
     }
   }

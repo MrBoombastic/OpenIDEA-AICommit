@@ -34,14 +34,28 @@ impl Backend {
         }
     }
 
-    /// The capability the backend needs, for the "not granted" message.
-    fn capability(self, local_url: &str) -> String {
+    /// What to tell the user when the host refused the backend's permission.
+    fn denied_message(self, local_url: &str) -> String {
+        let grant = |cap: &str| {
+            format!(
+                "{} is not allowed: grant {cap} to AI Commit Message in Settings › Plugins.",
+                self.label()
+            )
+        };
         match self {
-            Self::Claude => "process:claude".into(),
-            Self::Codex => "process:codex".into(),
-            Self::Anthropic => "net:api.anthropic.com".into(),
-            Self::OpenAi => "net:api.openai.com".into(),
-            Self::Local => format!("net:{}", host_of(local_url).unwrap_or("localhost")),
+            Self::Claude => grant("process:claude"),
+            Self::Codex => grant("process:codex"),
+            Self::Anthropic => grant("net:api.anthropic.com"),
+            Self::OpenAi => grant("net:api.openai.com"),
+            Self::Local => match host_of(local_url) {
+                Some(host @ ("localhost" | "127.0.0.1")) => grant(&format!("net:{host}")),
+                host => format!(
+                    "The local model at {} is not allowed. Grant net:ask to AI Commit Message in \
+Settings › Plugins, then run Generate from the button and allow the host when asked \
+(after Deny, the IDE does not ask again for 30 seconds).",
+                    host.unwrap_or(local_url)
+                ),
+            },
         }
     }
 }
@@ -50,15 +64,61 @@ pub fn setting(key: &str, default: &str) -> String {
     host::setting_string(key).unwrap_or_else(|| default.to_owned())
 }
 
+/// The host of `url`, without user info, port or IPv6 brackets.
 fn host_of(url: &str) -> Option<&str> {
     let rest = url.split_once("://")?.1;
     let authority = rest.split(['/', '?', '#']).next()?;
     let host = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
-    Some(host.split(':').next().unwrap_or(host))
+    let host = match host.strip_prefix('[') {
+        Some(v6) => v6.split(']').next().unwrap_or(v6),
+        None => host.split(':').next().unwrap_or(host),
+    };
+    (!host.is_empty()).then_some(host)
 }
 
-fn words(s: &str) -> impl Iterator<Item = &str> {
-    s.split_whitespace()
+fn is_loopback(host: &str) -> bool {
+    matches!(host, "localhost" | "127.0.0.1" | "::1") || host.ends_with(".localhost")
+}
+
+/// The URL of the OpenAI-compatible server: http only on this machine.
+fn local_url_checked(url: &str) -> Result<&str, Error> {
+    let host = host_of(url)
+        .ok_or_else(|| Error::Failed(format!("The local model URL is not a URL: {url}")))?;
+    let scheme = url
+        .split_once("://")
+        .map_or("", |(s, _)| s)
+        .to_ascii_lowercase();
+    match scheme.as_str() {
+        "https" => Ok(url),
+        "http" if is_loopback(host) => Ok(url),
+        "http" => Err(Error::Failed(format!(
+            "Use https:// for the local model at {host}: plain http is allowed only to localhost."
+        ))),
+        _ => Err(Error::Failed(format!(
+            "The local model URL must start with http:// or https://: {url}"
+        ))),
+    }
+}
+
+/// A model name from the settings, or `None` for the CLI's default. It goes in
+/// one `--model=` argument, so it can never be read as another option.
+fn model_arg(key: &str, default: &str) -> Result<Option<String>, Error> {
+    let model = setting(key, default);
+    let model = model.trim();
+    if model.is_empty() {
+        return Ok(None);
+    }
+    let valid = !model.starts_with('-')
+        && model.len() <= 128
+        && model
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "._:/-[]@".contains(c));
+    if !valid {
+        return Err(Error::Failed(format!(
+            "The model name {model:?} is not valid: use letters, digits and . _ : / - [ ] @."
+        )));
+    }
+    Ok(Some(format!("--model={model}")))
 }
 
 /// Asks `backend` for an answer to `system` + `user`; the raw text it returned.
@@ -69,6 +129,7 @@ pub fn ask(
     project: Option<&Project>,
 ) -> Result<String, Error> {
     let local_url = setting("localUrl", "http://localhost:11434/v1/chat/completions");
+    let local_url = local_url.trim();
     let result = match backend {
         Backend::Claude => claude(system, user, project),
         Backend::Codex => codex(system, user, project),
@@ -81,7 +142,7 @@ pub fn ask(
             user,
         ),
         Backend::Local => openai_compatible(
-            &local_url,
+            local_url_checked(local_url)?,
             &setting("localModel", "qwen2.5-coder:7b"),
             None,
             system,
@@ -89,11 +150,7 @@ pub fn ask(
         ),
     };
     result.map_err(|e| match e {
-        Error::Denied(_) => Error::Failed(format!(
-            "{} is not allowed: grant {} to AI Commit Message in Settings › Plugins.",
-            backend.label(),
-            backend.capability(&local_url)
-        )),
+        Error::Denied(_) => Error::Failed(backend.denied_message(local_url)),
         other => other,
     })
 }
@@ -129,17 +186,15 @@ fn run_cli(
 }
 
 /// `claude -p`: Claude Code in print mode, signed in as the user is in the IDE's agent.
+/// Always without tools: the model sees only the prompt, never the project.
+/// Settings (which a project can override) choose only the model.
 fn claude(system: &str, user: &str, project: Option<&Project>) -> Result<String, Error> {
-    let mut args: Vec<String> = vec!["-p".into(), "--output-format".into(), "text".into()];
-    let model = setting("claudeModel", "haiku");
-    if !model.trim().is_empty() {
-        args.extend(["--model".into(), model.trim().into()]);
-    }
-    if host::setting_bool("claudeNoTools").unwrap_or(true) {
-        args.extend(["--tools".into(), String::new()]);
-    }
+    let mut args: Vec<String> = ["-p", "--output-format", "text", "--tools", ""]
+        .into_iter()
+        .map(String::from)
+        .collect();
+    args.extend(model_arg("claudeModel", "haiku")?);
     args.extend(["--append-system-prompt".into(), system.into()]);
-    args.extend(words(&setting("claudeExtraArgs", "")).map(String::from));
     run_cli("claude", args, user, project)
 }
 
@@ -156,11 +211,7 @@ fn codex(system: &str, user: &str, project: Option<&Project>) -> Result<String, 
     .into_iter()
     .map(String::from)
     .collect();
-    let model = setting("codexModel", "");
-    if !model.trim().is_empty() {
-        args.extend(["-m".into(), model.trim().into()]);
-    }
-    args.extend(words(&setting("codexExtraArgs", "")).map(String::from));
+    args.extend(model_arg("codexModel", "")?);
     args.push("-".into());
     run_cli("codex", args, &format!("{system}\n\n{user}"), project)
 }
@@ -181,7 +232,12 @@ fn api_error(service: &str, status: u16, body: &str) -> Error {
 fn takes_fallbacks(model: &str) -> bool {
     matches!(
         model,
-        "claude-fable-5-1" | "claude-opus-5-5" | "claude-opus-5" | "claude-sonnet-5-5"
+        "claude-fable-5-2"
+            | "claude-fable-5-1"
+            | "claude-fable-5"
+            | "claude-opus-5-5"
+            | "claude-opus-5"
+            | "claude-sonnet-5-5"
     )
 }
 
@@ -288,7 +344,7 @@ fn openai_compatible(
 
 #[cfg(test)]
 mod tests {
-    use super::host_of;
+    use super::*;
 
     #[test]
     fn finds_the_host() {
@@ -297,6 +353,45 @@ mod tests {
             Some("localhost")
         );
         assert_eq!(host_of("http://127.0.0.1:1234/v1"), Some("127.0.0.1"));
+        assert_eq!(host_of("http://[::1]:8080/v1"), Some("::1"));
+        assert_eq!(
+            host_of("https://user@llm.example.com/v1"),
+            Some("llm.example.com")
+        );
         assert_eq!(host_of("nope"), None);
+    }
+
+    #[test]
+    fn plain_http_only_to_this_machine() {
+        assert!(local_url_checked("http://localhost:11434/v1/chat/completions").is_ok());
+        assert!(local_url_checked("http://127.0.0.1:1234/v1/chat/completions").is_ok());
+        assert!(local_url_checked("https://llm.example.com/v1/chat/completions").is_ok());
+        assert!(local_url_checked("http://192.168.1.5:11434/v1/chat/completions").is_err());
+        assert!(local_url_checked("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn the_denied_message_names_a_capability_the_manifest_declares() {
+        let manifest = include_str!("../plugin.toml");
+        for url in ["http://localhost:1/v1", "http://127.0.0.1:1/v1"] {
+            let msg = Backend::Local.denied_message(url);
+            let cap = msg
+                .split("grant ")
+                .nth(1)
+                .unwrap()
+                .split(' ')
+                .next()
+                .unwrap();
+            assert!(
+                manifest.contains(&format!("\"{cap}\"")),
+                "{cap} is not in plugin.toml"
+            );
+        }
+        assert!(
+            Backend::Local
+                .denied_message("https://llm.example.com/v1")
+                .contains("net:ask")
+        );
+        assert!(manifest.contains("\"net:ask\""));
     }
 }

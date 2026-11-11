@@ -97,7 +97,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 [[package]]
 name = "openidea-plugin"
 version = "0.1.0"
-source = "git+https://github.com/l0ng-ai/openidea?tag=v0.1.39#25424465c04c9221a92c02227c905911641d29e3"
+source = "git+https://github.com/l0ng-ai/openidea?tag=v0.1.42#e702e4da7b0333e81bc818e26be72db1d157ec5d"
 dependencies = [
  "serde",
  "serde_json",
@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "openidea-plugin-mrboombastic-ai-commit"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "openidea-plugin",
  "serde_json",
