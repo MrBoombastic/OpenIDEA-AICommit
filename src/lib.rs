@@ -311,16 +311,10 @@ mod tests {
         );
         let run = &host.process_runs()[0];
         assert_eq!(
-            run.args[..6],
-            [
-                "-p",
-                "--output-format",
-                "text",
-                "--tools",
-                "",
-                "--model=haiku"
-            ]
+            run.args[..5],
+            ["-p", "--output-format", "text", "--tools", ""]
         );
+        assert!(run.args.contains(&"--model=haiku".to_owned()));
         assert!(host.project_notifications().is_empty());
         assert_eq!(
             host.storage().get(LAST).unwrap(),
@@ -345,6 +339,13 @@ mod tests {
         assert_eq!(run.args.first().unwrap(), "exec");
         assert_eq!(run.args.last().unwrap(), "-");
         assert!(run.args.contains(&"--model=gpt-5-codex".to_owned()));
+        assert!(
+            run.args
+                .windows(2)
+                .any(|w| w == ["-c", "features.shell_tool=false"])
+        );
+        assert!(run.args.contains(&"--ephemeral".to_owned()));
+        assert!(run.args.contains(&"--ignore-user-config".to_owned()));
         assert_eq!(
             host.commit_draft().unwrap().message,
             "fix: handle login errors"
@@ -401,6 +402,8 @@ mod tests {
         assert!(args.windows(2).any(|w| w == ["--tools", ""]));
         assert!(args.iter().all(|a| !a.contains("dangerously")));
         assert!(args.contains(&"--model=sonnet".to_owned()));
+        assert!(args.windows(2).any(|w| w == ["--setting-sources", "user"]));
+        assert!(args.contains(&"--strict-mcp-config".to_owned()));
     }
 
     #[test]
@@ -484,6 +487,7 @@ mod tests {
         let host = host_with_draft("");
         host.set_setting("backend", "\"anthropic\"");
         host.set_secret("anthropic-api-key", "sk-test");
+        host.set_setting("anthropicModel", "\"claude-opus-5-5\"");
         host.on_fetch(|req| {
             assert_eq!(req.url, "https://api.anthropic.com/v1/messages");
             assert!(req.headers.contains(&("x-api-key".into(), "sk-test".into())));
@@ -492,6 +496,7 @@ mod tests {
             assert_eq!(body["model"], "claude-opus-5-5");
             assert_eq!(body["output_config"]["effort"], "low");
             assert_eq!(body["fallbacks"], "default");
+            assert!(req.headers.iter().any(|(k, v)| k == "anthropic-beta" && v == "server-side-fallback-2026-07-01"));
             Ok(HttpResponse {
                 status: 200,
                 headers: vec![],

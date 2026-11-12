@@ -92,11 +92,17 @@ the scope is optional and short; add `!` after the type or scope for a breaking 
         ),
     }
     p.push_str("- Base it only on the diff. Do not invent issue numbers, names or reasons.\n");
-    if draft.amend {
-        p.push_str("- This commit amends the previous one; the diff shows only the changes added on top of it.\n");
-    }
     let hint = draft.message.trim();
-    if opts.use_draft && !hint.is_empty() {
+    if draft.amend {
+        // The diff is against HEAD, so it shows only what the amend adds; the
+        // message must still describe the whole commit, which the box holds.
+        p.push_str("- This commit amends the previous one: the diff shows only the changes added to it. Write the message for the whole amended commit.\n");
+        if !hint.is_empty() {
+            p.push_str(&format!(
+                "\nThe message of the commit being amended (keep what it says and add the new changes, following the rules):\n<<<\n{hint}\n>>>\n"
+            ));
+        }
+    } else if opts.use_draft && !hint.is_empty() {
         p.push_str(&format!(
             "\nThe author already wrote this in the message box. Treat it as notes on the intent and keep what it says (rewrite it to follow the rules):\n<<<\n{hint}\n>>>\n"
         ));
@@ -251,6 +257,19 @@ mod tests {
             ..Options::default()
         };
         assert!(!build(&d, &off).contains("fix login crash"));
+    }
+
+    #[test]
+    fn amend_keeps_the_previous_message_even_without_the_hint() {
+        let mut d = draft("feat: add login", vec![change("a", Some("+x\n"))]);
+        d.amend = true;
+        let off = Options {
+            use_draft: false,
+            ..Options::default()
+        };
+        let p = build(&d, &off);
+        assert!(p.contains("whole amended commit"));
+        assert!(p.contains("feat: add login"));
     }
 
     #[test]

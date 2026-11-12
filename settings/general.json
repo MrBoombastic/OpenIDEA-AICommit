@@ -1,18 +1,5 @@
 {
   "properties": {
-    "backend": {
-      "type": "string",
-      "title": "Backend",
-      "description": "Who writes the message. Claude Code and Codex use the CLI you are signed in to (the same one the IDE's agents use) and need its process permission; the APIs need a key under Settings › Plugins; local is any OpenAI-compatible server (Ollama, LM Studio).",
-      "enum": [
-        "claude",
-        "codex",
-        "anthropic",
-        "openai",
-        "local"
-      ],
-      "default": "claude"
-    },
     "style": {
       "type": "string",
       "title": "Style",
@@ -44,7 +31,8 @@
     "useDraft": {
       "type": "boolean",
       "title": "Use the text already in the message box as a hint",
-      "default": true
+      "default": true,
+      "description": "When amending, the previous message is always used."
     },
     "instructions": {
       "type": "string",
@@ -56,7 +44,7 @@
     "maxDiffKb": {
       "type": "integer",
       "title": "Diff sent to the model (KiB)",
-      "description": "Larger diffs are cut; the file list is always sent whole.",
+      "description": "From 4 to 1024. Larger diffs are cut; the file list is always sent whole.",
       "default": 64
     }
   }

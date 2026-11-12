@@ -189,22 +189,52 @@ fn run_cli(
 /// Always without tools: the model sees only the prompt, never the project.
 /// Settings (which a project can override) choose only the model.
 fn claude(system: &str, user: &str, project: Option<&Project>) -> Result<String, Error> {
-    let mut args: Vec<String> = ["-p", "--output-format", "text", "--tools", ""]
-        .into_iter()
-        .map(String::from)
-        .collect();
+    // No project settings (they could set hooks or ANTHROPIC_BASE_URL, and print
+    // mode skips the trust dialog), no MCP servers or skills, and no session left
+    // in the user's `claude --resume` list.
+    let mut args: Vec<String> = [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--setting-sources",
+        "user",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--no-session-persistence",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect();
     args.extend(model_arg("claudeModel", "haiku")?);
     args.extend(["--append-system-prompt".into(), system.into()]);
     run_cli("claude", args, user, project)
 }
 
 /// `codex exec -`: the prompt comes from stdin; the final message goes to stdout.
+/// The read-only sandbox still lets Codex read any file: with its shell tool, or
+/// with an MCP server from the user's config (the Codex app adds `node_repl`).
+/// So: no user config (sign-in still works, it lives in CODEX_HOME), no rules,
+/// no shell, images, subagents or apps, and no session kept. Tested on Windows
+/// with codex-cli 0.167.0: asked to read README.md, it answered "NO ACCESS".
 fn codex(system: &str, user: &str, project: Option<&Project>) -> Result<String, Error> {
     let mut args: Vec<String> = [
         "exec",
         "--skip-git-repo-check",
         "--sandbox",
         "read-only",
+        "--ephemeral",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "-c",
+        "features.shell_tool=false",
+        "-c",
+        "features.view_image=false",
+        "-c",
+        "features.multi_agent=false",
+        "-c",
+        "features.apps=false",
         "--color",
         "never",
     ]
@@ -245,10 +275,10 @@ fn takes_fallbacks(model: &str) -> bool {
 fn anthropic(system: &str, user: &str) -> Result<String, Error> {
     if !host::secret_is_set("anthropic-api-key") {
         return Err(Error::Failed(
-            "Enter the Anthropic API key under Settings › Plugins › AI Commit Message.".into(),
+            "Enter the Anthropic API key in Settings › Plugins: select AI Commit Message in the list, then Secrets.".into(),
         ));
     }
-    let model = setting("anthropicModel", "claude-opus-5-5");
+    let model = setting("anthropicModel", "claude-haiku-5-5");
     let mut body = json!({
         "model": model,
         "max_tokens": 16000,
@@ -276,6 +306,11 @@ fn anthropic(system: &str, user: &str) -> Result<String, Error> {
     }
     let v: Value =
         serde_json::from_str(&text).map_err(|e| Error::Failed(format!("Anthropic API: {e}")))?;
+    if v["stop_reason"] == "max_tokens" {
+        return Err(Error::Failed(
+            "Anthropic API ran out of tokens before the message was finished: lower the effort or use a smaller diff.".into(),
+        ));
+    }
     if v["stop_reason"] == "refusal" {
         return Err(Error::Failed(
             "Anthropic API declined to write this message (refusal).".into(),
@@ -304,7 +339,7 @@ fn openai_compatible(
 ) -> Result<String, Error> {
     if auth.is_some() && !host::secret_is_set("openai-api-key") {
         return Err(Error::Failed(
-            "Enter the OpenAI API key under Settings › Plugins › AI Commit Message.".into(),
+            "Enter the OpenAI API key in Settings › Plugins: select AI Commit Message in the list, then Secrets.".into(),
         ));
     }
     let body = json!({

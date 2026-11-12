@@ -1,16 +1,29 @@
 {
   "properties": {
+    "backend": {
+      "type": "string",
+      "title": "Backend",
+      "description": "Who writes the message. Claude Code and Codex use the CLI you are signed in to (the same one the IDE's agents use) and need its process permission; the APIs need a key under Settings › Plugins; local is any OpenAI-compatible server (Ollama, LM Studio). Test it with the button below.",
+      "enum": [
+        "claude",
+        "codex",
+        "anthropic",
+        "openai",
+        "local"
+      ],
+      "default": "claude"
+    },
     "claudeModel": {
       "type": "string",
       "title": "Model",
-      "description": "Passed as --model (haiku, sonnet, opus or a full model id). Empty: the CLI's default.",
+      "description": "Passed as --model (haiku, sonnet, opus or a full model id). Empty: the CLI's default. Claude Code runs without tools, MCP servers and the project's .claude settings.",
       "group": "Claude Code",
       "default": "haiku"
     },
     "codexModel": {
       "type": "string",
       "title": "Model",
-      "description": "Passed as --model. Empty: the CLI's default.",
+      "description": "Passed as --model. Empty: Codex's built-in default (your ~/.codex/config.toml is not read, so its model and reasoning settings do not apply).",
       "group": "Codex",
       "default": ""
     },
@@ -18,12 +31,13 @@
       "type": "string",
       "title": "Model",
       "group": "Anthropic API",
-      "default": "claude-opus-5-5"
+      "default": "claude-haiku-5-5",
+      "description": "claude-haiku-5-5 is fast and cheap; claude-sonnet-5-5 or claude-opus-5-5 for harder diffs. The API key goes in Settings › Plugins: select AI Commit Message in the list, then Secrets."
     },
     "anthropicEffort": {
       "type": "string",
       "title": "Effort",
-      "description": "default: leave it to the model (use it for models without effort, such as Haiku 4.5).",
+      "description": "How much the model thinks first. default: the model's own default (and for models without effort).",
       "group": "Anthropic API",
       "enum": [
         "low",
@@ -37,7 +51,8 @@
       "type": "string",
       "title": "Model",
       "group": "OpenAI API",
-      "default": "gpt-4.1-mini"
+      "default": "gpt-4.1-mini",
+      "description": "The API key goes in Settings › Plugins: select AI Commit Message in the list, then Secrets."
     },
     "localUrl": {
       "type": "string",
